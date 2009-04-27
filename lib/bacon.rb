@@ -57,16 +57,20 @@ module Bacon
     ok ? self.green(message) : self.red(message)
   end
   
-  module SpecDoxOutput
+  module SpecDoxOutput  
+    def spaces
+      "  " * (Counter[:context_depth] - 1)
+    end
+
     def handle_specification(name)
-      puts name
+      puts spaces + name
       yield
       puts
     end
 
     def handle_requirement(description)
       error = yield
-      print_c "- #{description}", error.empty?
+      print_c spaces+"- #{description}", error.empty?
       puts error.empty? ? "" : " [#{error}]"
     end
 
@@ -157,7 +161,9 @@ module Bacon
     
     def run
       return  unless name =~ RestrictContext
+      Counter[:context_depth] += 1
       Bacon.handle_specification(name) { instance_eval(&block) }
+      Counter[:context_depth] -= 1
       self
     end
 
