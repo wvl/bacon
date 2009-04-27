@@ -20,6 +20,7 @@ module Bacon
   RestrictContext = //  unless defined? RestrictContext
 
   Backtraces = true  unless defined? Backtraces
+  Colorize = false unless defined? Colorize
 
   def self.summary_on_exit
     return  if Counter[:installed_summary] > 0
@@ -35,6 +36,27 @@ module Bacon
   end
   class <<self; alias summary_at_exit summary_on_exit; end
 
+  def self.all_green?
+    Counter[:failed] == 0 && Counter[:errors] == 0
+  end
+  
+  def self.green(message);   "\e[32m" + message + "\e[0m"; end
+  def self.red(message);     "\e[31m" + message + "\e[0m"; end
+  def self.yellow(message);  "\e[33m" + message + "\e[0m"; end
+
+  def self.puts_c(message, ok)
+    puts output(message, ok)
+  end
+  
+  def self.print_c(message, ok)
+    print output(message, ok)
+  end
+  
+  def self.output(message, ok)
+    return message unless Colorize
+    ok ? self.green(message) : self.red(message)
+  end
+  
   module SpecDoxOutput
     def handle_specification(name)
       puts name
@@ -43,15 +65,16 @@ module Bacon
     end
 
     def handle_requirement(description)
-      print "- #{description}"
       error = yield
+      print_c "- #{description}", error.empty?
       puts error.empty? ? "" : " [#{error}]"
     end
 
     def handle_summary
       print ErrorLog  if Backtraces
-      puts "%d specifications (%d requirements), %d failures, %d errors" %
+      m = "%d specifications (%d requirements), %d failures, %d errors" %
         Counter.values_at(:specifications, :requirements, :failed, :errors)
+      puts_c(m, all_green?)
     end
   end
 
@@ -60,18 +83,16 @@ module Bacon
 
     def handle_requirement(description)
       error = yield
-      if error.empty?
-        print "."
-      else
-        print error[0..0]
-      end
+      m = error.empty? ? "." : error[0..0]
+      print_c(m, error.empty?)
     end
 
     def handle_summary
       puts
       puts ErrorLog  if Backtraces
-      puts "%d tests, %d assertions, %d failures, %d errors" %
+      m = "%d tests, %d assertions, %d failures, %d errors" %
         Counter.values_at(:specifications, :requirements, :failed, :errors)
+      puts_c(m, all_green?)
     end
   end
 

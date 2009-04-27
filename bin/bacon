@@ -40,6 +40,9 @@ opts = OptionParser.new("", 24, '  ') { |opts|
   opts.separator ""
   opts.separator "bacon options:"
 
+  opts.on("-c", "--color", "Output in color") {
+    Bacon.const_set :Colorize, true
+  }
   opts.on("-s", "--specdox", "do AgileDox-like output (default)") {
     output = 'SpecDoxOutput'
   }
@@ -108,7 +111,6 @@ if files.empty?
 end
 
 require 'bacon'
-
 Bacon.extend Bacon.const_get(output) rescue abort "No such formatter: #{output}"
 Bacon.summary_on_exit
 
