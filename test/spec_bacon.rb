@@ -372,3 +372,23 @@ describe 'describe arguments' do
   end
 
 end
+
+describe 'Context before and after' do
+  class MyMocks
+    @mocks = [false]
+    def self.clear; @mocks = []; end
+    def self.add_mock(mock); @mocks << mock; end
+    def self.check_mocks; @mocks.each { |m| m.should == true }; end
+  end
+  
+  Bacon::Context.before {
+    MyMocks.clear
+  }
+  Bacon::Context.after {
+    MyMocks.check_mocks
+  }
+  
+  it "should call before and after class attributes" do
+    MyMocks.add_mock(true)
+  end
+end

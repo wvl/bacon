@@ -151,6 +151,14 @@ module Bacon
   end
 
   class Context
+    @@before = []
+    @@after = []
+    
+    class << self
+      def before(&block);  @@before << block; end
+      def after(&block);  @@after << block; end
+    end
+    
     attr_reader :name, :block
     
     def initialize(name, &block)
@@ -195,9 +203,11 @@ module Bacon
           Counter[:depth] += 1
           rescued = false
           begin
+            @@before.each { |block| instance_eval(&block) }
             @before.each { |block| instance_eval(&block) }
             prev_req = Counter[:requirements]
             instance_eval(&spec)
+            @@after.each { |block| instance_eval(&block) }
           rescue Object => e
             rescued = true
             raise e
