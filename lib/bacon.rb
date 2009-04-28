@@ -54,6 +54,7 @@ module Bacon
   
   def self.output(message, ok)
     return message unless Colorize
+    return self.yellow(message) if ok == :pending
     ok ? self.green(message) : self.red(message)
   end
   
@@ -70,15 +71,19 @@ module Bacon
 
     def handle_requirement(description)
       error = yield
-      print_c spaces+"- #{description}", error.empty?
-      puts error.empty? ? "" : " [#{error}]"
+      ok = error[0..0] == "P" ? :pending : error.empty?
+      print_c spaces+"- #{description}", ok
+      puts_c(error.empty? ? "" : " [#{error}]", ok)
     end
 
     def handle_summary
       print ErrorLog  if Backtraces
-      m = "%d specifications (%d requirements), %d failures, %d errors" %
-        Counter.values_at(:specifications, :requirements, :failed, :errors)
-      puts_c(m, all_green?)
+      print_c(("%d specifications (%d requirements), " % \
+        Counter.values_at(:specifications, :requirements)), all_green?)
+      print_c("#{Counter[:pending]} pending, ", :pending) \
+        if Counter[:pending] > 0
+      puts_c("#{Counter[:failed]} failures, #{Counter[:errors]} errors",
+        all_green?)
     end
   end
 
@@ -88,15 +93,19 @@ module Bacon
     def handle_requirement(description)
       error = yield
       m = error.empty? ? "." : error[0..0]
-      print_c(m, error.empty?)
+      ok = error[0..0] == "P" ? :pending : error.empty?      
+      print_c(m, ok)
     end
 
     def handle_summary
       puts
       puts ErrorLog  if Backtraces
-      m = "%d tests, %d assertions, %d failures, %d errors" %
-        Counter.values_at(:specifications, :requirements, :failed, :errors)
-      puts_c(m, all_green?)
+      print_c(("%d test %d assertions, " % \
+        Counter.values_at(:specifications, :requirements)), all_green?)
+      print_c("#{Counter[:pending]} pending, ", :pending) \
+        if Counter[:pending] > 0
+      puts_c("#{Counter[:failed]} failures, #{Counter[:errors]} errors",
+        all_green?)
     end
   end
 
@@ -150,6 +159,12 @@ module Bacon
     end
   end
 
+  class PendingError < Error
+    def initialize(message="Spec is pending")
+      super(:pending, message)
+    end
+  end
+
   class Context
     @@before = []
     @@after = []
@@ -184,9 +199,12 @@ module Bacon
 
     def it(description, &block)
       return  unless description =~ RestrictName
-      block ||= lambda { should.flunk "not implemented" }
       Counter[:specifications] += 1
-      run_requirement description, block
+      if block then
+        run_requirement description, block
+      else
+        run_requirement(description, lambda { pending })
+      end
     end
     
     def should(*args, &block)
@@ -195,6 +213,10 @@ module Bacon
       else
         super(*args,&block)
       end
+    end
+
+    def pending
+      raise PendingError.new
     end
 
     def run_requirement(description, spec)
@@ -222,6 +244,9 @@ module Bacon
               raise e  unless rescued
             end
           end
+        rescue PendingError => e
+          Counter[:pending] += 1
+          "PENDING"
         rescue Object => e
           ErrorLog << "#{e.class}: #{e.message}\n"
           e.backtrace.find_all { |line| line !~ /bin\/bacon|\/bacon\.rb:\d+/ }.

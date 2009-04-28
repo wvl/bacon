@@ -392,3 +392,12 @@ describe 'Context before and after' do
     MyMocks.add_mock(true)
   end
 end
+
+# describe "Pending" do
+#   it "should be pending if there is no block provided"
+#   
+#   it "should accept a pending statement to skip the block" do
+#     pending
+#     2.should == 1
+#   end
+# end
